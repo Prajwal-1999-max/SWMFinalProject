@@ -36,13 +36,11 @@ def version2_undersample(input_table):
     feature_columns = [col for col in input_table.columns if col not in excluded_columns]
     processed_features = input_table[feature_columns]
 
-    # We perform normalization
     processed_features = processed_features.apply(lambda x: x / x.abs().max(), axis=0)
 
     feature_names = processed_features.columns.tolist()
     feature_matrix = processed_features.to_numpy()
 
-    # We erform undersampling
     undersampler = NearMiss(version=3, n_neighbors_ver3=3)
     undersampled_features, undersampled_labels = undersampler.fit_resample(feature_matrix, target_labels)
 
@@ -67,7 +65,6 @@ def pre_process(input_table):
     feature_columns = [col for col in input_table.columns if col not in excluded_columns]
     processed_features = input_table[feature_columns]
 
-    # We perfrom normalization
     processed_features = processed_features.apply(lambda x: x / x.abs().max(), axis=0)
 
     feature_names = processed_features.columns.tolist()
@@ -101,18 +98,15 @@ def generate_metrics(true_labels, predicted_labels, evaluation_type):
     metrics_df = pd.DataFrame(list(zip(metric_names, metric_values)), columns=["metric_type", "value"])
     metrics_df.to_csv(f"./EVALUATIONS/Metrics_{evaluation_type}.csv", header=False, index=False)
 
-    # We create a DataFrame
     confusion_matrix_data = {'Predicted Positive': [tp, fn],
                              'Predicted Negative': [fp, tn]}
     confusion_matrix_index = ['Actual Positive', 'Actual Negative']
 
     confusion_matrix_df = pd.DataFrame(confusion_matrix_data, index=confusion_matrix_index)
 
-    # We print the confusion matrix
     print("\nConfusion Matrix:")
     print(tabulate(confusion_matrix_df, headers='keys', tablefmt='psql'))
 
-    # We print the metric values
     print("\nMetric Values:")
     print(tabulate(metrics_df, headers='keys', tablefmt='psql'))
 
@@ -128,7 +122,7 @@ def metadata_view(input_table):
 
 def textual_data_review(table):
     statistics_table = {"RationOfCapL": [], "RatioOfCapW": [
-    ], "RatioOfFirstPerson": [], "RatioOfExclamation": []}  # , "sentiment":[]
+    ], "RatioOfFirstPerson": [], "RatioOfExclamation": []}
     first_person_pronouns = set(["i", "mine", "my", "me", "we", "our", "us", "ourselves", "ours"])
 
     for i, row in table.iterrows():
@@ -170,18 +164,15 @@ def textual_data_review(table):
     return text_statistics
 
 def table_burst_reviewer(table):
-    # We group data by product and date
+    
     grouped_data = table.groupby(['prod_id', 'date'])
 
-    # We calculate density
     density = grouped_data.size().reset_index(name='density')
     table = table.merge(density, on=['prod_id', 'date'], validate='m:1')
 
-    # We perform Mean Rating Deviation
     avg_date = grouped_data['rating'].mean().reset_index(name='avg_date')
     table = table.merge(avg_date, on=['prod_id', 'date'], validate='m:1')
 
-    # We perform Deviation From The Local Mean
     avg = table.groupby('prod_id')['rating'].mean().reset_index(name='avg')
     table = table.merge(avg, on='prod_id', validate='m:1')
     table['DFTLM'] = (table['rating'] - table['avg_date']).abs()
@@ -192,12 +183,10 @@ def table_burst_reviewer(table):
 
 
 def extract_behavioral_features(table):
-    # We calculate MNR
     review_count = table.groupby(['user_id', 'date']).size().reset_index(name='count')
     mnr = review_count.groupby('user_id')['count'].max().reset_index(name='MNR')
     table = table.merge(mnr, on='user_id', validate='m:1')
 
-    # We calculate PPR and PNR
     total_reviews = table.groupby('user_id')['rating'].count().reset_index(name='total')
     positive_reviews = table[table['rating'] >= 4].groupby('user_id')['rating'].count().reset_index(name='pos')
     negative_reviews = table[table['rating'] <= 2].groupby('user_id')['rating'].count().reset_index(name='neg')
@@ -209,12 +198,10 @@ def extract_behavioral_features(table):
     merged_totals['PNR'] = merged_totals['neg'] / merged_totals['total']
     table = table.merge(merged_totals[['user_id', 'PPR', 'PNR']], on='user_id', validate='m:1')
 
-    # We calculate RL
     table['review_length'] = table['review'].str.split().str.len()
     avg_review_length = table.groupby('user_id')['review_length'].mean().reset_index(name='RL')
     table = table.merge(avg_review_length, on='user_id', validate='m:1')
 
-    # We calculate Rating Deviation and Reviewer Deviation
     avg_prod_rating = table.groupby('prod_id')['rating'].mean().reset_index(name='avg')
     table = table.merge(avg_prod_rating, on='prod_id', validate='m:1')
     table['rating_dev'] = (table['rating'] - table['avg']).abs()
@@ -225,12 +212,10 @@ def extract_behavioral_features(table):
 
 
 def feature_extraction_rating(table):
-    # We calculate the Average deviation from entity's average
     avg_prod_rating = table.groupby('prod_id')['rating'].mean().reset_index(name='prod_avg')
     table = table.merge(avg_prod_rating, on='prod_id', validate='m:1')
     table['avg_dev_from_entity_avg'] = (table['rating'] - table['prod_avg']).abs()
 
-    # We calculate the Rating entropy
     user_rating_counts = table.groupby(['user_id', 'rating']).size().reset_index(name='count')
     user_total_counts = user_rating_counts.groupby('user_id')['count'].sum().reset_index(name='total_count')
     user_rating_counts = user_rating_counts.merge(user_total_counts, on='user_id', validate='m:1')
@@ -239,7 +224,6 @@ def feature_extraction_rating(table):
         name='rating_entropy')
     table = table.merge(user_rating_entropy, on='user_id', validate='m:1')
 
-    # We calculate the Rating variance
     avg_user_rating = table.groupby('user_id')['rating'].mean().reset_index(name='user_avg')
     table = table.merge(avg_user_rating, on='user_id', validate='m:1')
     table['rating_variance'] = (table['rating'] - table['user_avg']) ** 2
@@ -248,7 +232,6 @@ def feature_extraction_rating(table):
 
 
 def extract_temporal_features(data):
-    # We calculate the Activity time
     data['date'] = pd.to_datetime(data['date'])
     temp_data = data.loc[:, ['user_id', 'date', 'rating']]
     temp_data.sort_values(by=['date'], inplace=True)
@@ -259,20 +242,17 @@ def extract_temporal_features(data):
     activity_time_table['activity_time'] = (
             (activity_time_table['last_date'] - activity_time_table['first_date']) / np.timedelta64(1, 'D')).astype(int)
 
-    # We find Maximum rating per day
     temp_data2 = data
     temp_data2['date'] = pd.to_datetime(temp_data2['date'])
     temp_data2 = temp_data2[['user_id', 'date', 'rating']].groupby(['user_id', 'date']).agg(
         max_rating=pd.NamedAgg(column='rating', aggfunc='max')
     )
 
-    # We find Date entropy
     temp_data['previous_date'] = temp_data.groupby('user_id')['date'].shift()
     temp_data['date_entropy'] = temp_data['date'] - temp_data['previous_date']
     temp_data.replace({pd.NaT: '0 day'}, inplace=True)
     temp_data['date_entropy'] = (temp_data['date_entropy'] / np.timedelta64(1, 'D')).astype(int)
 
-    # We find Date variance
     temp_data['original_index'] = temp_data.index
     temp_data3 = temp_data[['user_id', 'date']].groupby(['user_id']).agg(
         avg_date=pd.NamedAgg(column='date', aggfunc='mean')
@@ -281,7 +261,6 @@ def extract_temporal_features(data):
     temp_data['date_variance'] = abs(((temp_data['date'] - temp_data['avg_date']) / np.timedelta64(1, 'D'))) ** 2
     temp_data.set_index('original_index')
 
-    # We Merge with original data
     data = data.loc[:, ['user_id', 'date']]
     data['date'] = pd.to_datetime(data['date'])
     data = pd.merge(data, activity_time_table, on='user_id', how='left')
