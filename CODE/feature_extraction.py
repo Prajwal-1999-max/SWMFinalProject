@@ -51,13 +51,6 @@ def version2_undersample(input_table):
     return undersampled_features, label_array, feature_names
 
 
-"""
-We do undersampling on our data by keeping fake reviews. After doing this,
-we get random sample of the real reviews in a way that number of each class
-(both fake and real) are same. We achieve this using the function below.
-"""
-
-
 def undersample_data(input_table):
     random_state = 573
     class_sizes = input_table.groupby('label').size()
@@ -123,16 +116,6 @@ def generate_metrics(true_labels, predicted_labels, evaluation_type):
     print("\nMetric Values:")
     print(tabulate(metrics_df, headers='keys', tablefmt='psql'))
 
-
-"""
-We created a helper function calculate_singleton() below to calculate singleton values.
-This function is called by review_metadata().
-Features of Metadata are given below:
-Singleton: It is 1 if review is only one written by the user on date. Otherwise, it is 0.
-Rating: It is the rating (1-5) given in the review (calculation is not required).
-"""
-
-
 def calculate_singleton(group):
     group_size = group.shape[0]
     return pd.Series([1 if group_size == 1 else 0] * group_size, index=group.index)
@@ -142,17 +125,6 @@ def metadata_view(input_table):
     input_table['singleton'] = input_table.groupby(['user_id', 'date']).apply(calculate_singleton).reset_index(
         drop=True)
     return input_table[['singleton']]
-
-
-"""
-The text statistics are provided below:
-Number of words: It is the length of the review in words
-Ratio of capital letters: It is the number of words having capital letters w.r.t the total number of words present in the review
-Ratio of capital words: It takes into account only the words which have all capital letters.
-Ratio of the first person pronouns: It considers only words which are first person pronouns.
-Ratio of exclamation sentences: It considers only sentences ending with '!'
-"""
-
 
 def textual_data_review(table):
     statistics_table = {"RationOfCapL": [], "RatioOfCapW": [
@@ -197,15 +169,6 @@ def textual_data_review(table):
     text_statistics = pd.DataFrame.from_dict(statistics_table)
     return text_statistics
 
-
-"""
-The burst features are given below:
-Density: It is the number of reviews for the entity on the given day.
-Mean Rating Deviation: It is given by the formula |(average product rating on that date) - (average product rating)|
-Deviation From Local Mean: It is given by the formula |(product rating) - (average product rating on that date)|
-"""
-
-
 def table_burst_reviewer(table):
     # We group data by product and date
     grouped_data = table.groupby(['prod_id', 'date'])
@@ -226,16 +189,6 @@ def table_burst_reviewer(table):
 
     return table[['density', 'MRD', 'DFTLM']]
 
-
-"""
-The general behavioral features are given below:
-Maximum Number of Reviews (MNR): It is the maximum number of reviews typed by the user on any day.
-Percentage of Positive Reviews (PPR): It is the ratio of positive reviews (4-5) to the total reviews.
-Percentage of Negative Reviews (PNR): It is the ratio of negative reviews (1-2) to the total reviews.
-Review Length (RL): It is the average length of reviews typed by the user.
-Rating Deviation: It is the deviation of a review from the other reviews on same business. It is given by the formula (rating - average product rating)
-Reviewer Deviation: It is the average of the rating deviation across all the users' reviews.
-"""
 
 
 def extract_behavioral_features(table):
@@ -271,13 +224,6 @@ def extract_behavioral_features(table):
     return table[['MNR', 'PPR', 'PNR', 'RL', 'rating_dev', 'reviewer_dev']]
 
 
-"""
-The rating features are given below:
-Average Deviation from the entity's average: The user's ratings assigned in his reviews evaluated are usually different from the average of an entitiy's rating.
-Rating Entropy: It is the entropy of the rating distribution of user's reviews.
-"""
-
-
 def feature_extraction_rating(table):
     # We calculate the Average deviation from entity's average
     avg_prod_rating = table.groupby('prod_id')['rating'].mean().reset_index(name='prod_avg')
@@ -299,15 +245,6 @@ def feature_extraction_rating(table):
     table['rating_variance'] = (table['rating'] - table['user_avg']) ** 2
 
     return table[['avg_dev_from_entity_avg', 'rating_entropy', 'rating_variance']]
-
-
-"""
-The temporal features are given below:
-Activity time: It is the number of days between the first and last review of the user.
-Maximum Rating Per Day: It is the highest rating given by the user in the given day.
-Date Entropy: It is the number of days between the current review and the upcoming review of the user.
-Date Variance: It is given by the formula |(date of review) - (average review date of the user)| ^ 2.
-"""
 
 
 def extract_temporal_features(data):
